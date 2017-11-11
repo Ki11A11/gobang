@@ -11,7 +11,7 @@ using namespace Qt;
 #define MARK_REMOVE(step,mark__unmove,matrix) (step->setId(step->getId()+10)),(mark__unmove--),matrix[step->getX()][step->getY()]=step->getId()
 #define REMOVE_METRICS(id) id==WHITE||id==BLACK
 #define GOBANG_SIZE (boardSize+QPoint(1,1))
-#define NEW_METRICS(step,matrix) (step->getId()>=10?(step->setId(step->getId()-10),matrix[step->getX()][step->getY()]=step->getId(),true):false)
+#define NEW_METRICS(step,matrix) (step->getId()-10>=(BLACK>WHITE?WHITE:BLACK)?(step->setId(step->getId()-10),matrix[step->getX()][step->getY()]=step->getId(),true):false)
 
 Game::Game(QWidget *parent) : QWidget(parent)
 {
@@ -32,10 +32,14 @@ Game::Game(QWidget *parent) : QWidget(parent)
     btn_remove->setText("ReMove");
     btn_unmove = new QPushButton(this);
     btn_unmove->setText("UnMove");
+    btn_ai_enter = new QPushButton(this);
+    btn_ai_enter->setText("AI Enter");
     btn_remove->setGeometry(0,0,100,50);
     btn_unmove->setGeometry(0,50,100,50);
+    btn_ai_enter->setGeometry(100,0,100,50);
     connect(btn_remove,SIGNAL(clicked()),this,SLOT(ReMove()));
     connect(btn_unmove,SIGNAL(clicked()),this,SLOT(UnMove()));
+    connect(btn_ai_enter,SIGNAL(clicked()),this,SLOT(NotifyAI()));
     Draw();
 }
 
@@ -60,7 +64,7 @@ void Game::mousePressEvent(QMouseEvent *event){
 
         if(matrix[mousePos.x()][mousePos.y()]!=EMPTY)
             return;
-        Step* step= new Step(mousePos,curPlayer+10);
+        Step* step= new Step(mousePos,MARK_NEW(curPlayer));
         Move(step);
     }
 }
@@ -127,7 +131,10 @@ void Game::Move(Step* step){
             stepList.append(step);
         }
         else {
+            if(stepList.length()-markUnMove-1<0)markUnMove--; //bug when unmoveMark set to edge and do new remove-unmove, but mem set to origin, so after remove the new unmove, the original unmove been ready to accept remove
+
             stepList[stepList.length()-markUnMove] = step;
+            markUnMove--;
         }
     }
 
@@ -142,7 +149,7 @@ void Game::Move(int x,int y, int id){
 void Game::UnMove(){
     Step* step;
     int nextRemove;
-
+    qDebug()<<markUnMove;
     if(stepList.length()==0)return;
 
     nextRemove = stepList.length()-markUnMove-1;
@@ -150,6 +157,7 @@ void Game::UnMove(){
 
     step = stepList[nextRemove];
     MARK_UNMOVE(step,markUnMove,matrix);
+    qDebug()<<step->getId()<<step->getX();
     Move(step);
 }
 void Game::ReMove(){
@@ -221,7 +229,20 @@ void Game::Judge(Step* step){
     }
 
 }
+void Game::Try(Step* step){
+    stepList.push_back(step);
+    matrix[step->getX()][step->getY()]=step->getId();
+}
+void Game::UnTry(){
+    Step* step = stepList.back();
+    stepList.pop_back();
+    matrix[step->getX()][step->getY()]=EMPTY;
+}
 
+//pure communication slots
+void Game::NotifyAI(){
+    emit notify_ai(curPlayer,matrix);
+}
 
 //Step
 Step::Step(int x,int y,int id):x(x),y(y),id(id){}

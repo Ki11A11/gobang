@@ -7,7 +7,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 SOURCES += \
     main.cpp \
-    game.cpp
+    game.cpp \
+    ai.cpp
 
 HEADERS += \
-    game.h
+    game.h \
+    ai.h

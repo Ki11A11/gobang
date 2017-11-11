@@ -10,8 +10,9 @@
 #include <QLabel>
 
 #define WHITE 1
-#define BLACK 0
-#define EMPTY -1
+#define BLACK -1
+#define EMPTY 0
+#define MARK_NEW(id) (id+10)
 
 class Step;
 class Game : public QWidget
@@ -32,7 +33,7 @@ public:
     void setCellSize(int size);
     void setCellSize(QPoint size);
 
-    void Move(Step* step);
+
     void Move(int x,int y, int id);
 
     void Judge(Step* step);
@@ -53,14 +54,20 @@ private:
     QPushButton* btn_move;
     QPushButton* btn_remove;
     QPushButton* btn_unmove;
+    QPushButton* btn_ai_enter;
     QLabel* label_recorder;
 
     int markUnMove = 0;
-
+signals:
+    void notify_ai(int cur, QVector<QVector<int> >board);
 private slots:
+    void NotifyAI();
     void Draw();
+    void Move(Step* step);
     void UnMove();
     void ReMove();
+    void Try(Step* step);
+    void UnTry();
 };
 
 class Step{
