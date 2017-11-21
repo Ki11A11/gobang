@@ -241,7 +241,7 @@ void Game::UnTry(){
 
 //pure communication slots
 void Game::NotifyAI(){
-    emit notify_ai(curPlayer,matrix);
+    emit notify_ai(curPlayer,&matrix);
 }
 
 //Step

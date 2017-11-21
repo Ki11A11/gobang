@@ -59,7 +59,7 @@ private:
 
     int markUnMove = 0;
 signals:
-    void notify_ai(int cur, QVector<QVector<int> >board);
+    void notify_ai(int cur, QVector<QVector<int> >*board);
 private slots:
     void NotifyAI();
     void Draw();
