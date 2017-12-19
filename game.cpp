@@ -125,6 +125,8 @@ void Game::Draw(){
     repaint();
 }
 void Game::Move(Step* step){
+
+
     if(NEW_METRICS(step,matrix)){
         if(markUnMove==0)
         {
@@ -168,7 +170,7 @@ void Game::ReMove(){
     MARK_REMOVE(step,markUnMove,matrix);
     Move(step);
 }
-void Game::Judge(Step* step){
+int Game::Judge(Step* step){
     int co = step->getId();
     int x = step->getX();
     int y = step->getY();
@@ -226,7 +228,10 @@ void Game::Judge(Step* step){
     if(col==5||row==5||mai==5||vice==5){
         QString winner = co==WHITE?"White":"Black";
         label_recorder->setText(winner);
+        return curPlayer;
     }
+
+    return 0;
 
 }
 void Game::Try(Step* step){
@@ -251,7 +256,14 @@ Step::Step(QPoint _pos,int _id){
     y = _pos.y();
     id = _id;
 }
-int Step::getX(){return x;}
-int Step::getY(){return y;}
-int Step::getId(){return id;}
+int Step::getX()const{return x;}
+int Step::getY()const{return y;}
+int Step::getId()const{return id;}
 void Step::setId(int id){this->id=id;}
+//inline bool Step::operator ==(const Step &st)const
+//{
+//    if(x == st.getX() && y == st.getY() && id == st.getId())
+//        return true;
+//    else
+//        return false;
+//}

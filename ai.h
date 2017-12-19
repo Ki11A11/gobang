@@ -18,7 +18,7 @@ signals:
 public slots:
     void Enter(int myTurn,QVector<QVector<int> > *board);
 private:
-    int Deep=4;
+    int Deep=2;
     Node* root;
     int myTurn;
     int myMark;

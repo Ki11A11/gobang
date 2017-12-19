@@ -112,7 +112,7 @@ int AI::max(int deep,Node*ro,int alpha,int beta){
         step = node->step;
         if(step==nullptr)return best;
         emit put_try(step);
-        val = min(deep-1,node,alpha,beta);
+        val = min(deep-1,node,alpha,best>beta?best:beta);
         emit untry();
 
         if(val>best){
@@ -121,7 +121,7 @@ int AI::max(int deep,Node*ro,int alpha,int beta){
             alpha = best;
             bestChild = node;
         }
-        if(val>beta)
+        if(val>alpha)
             break;
     }
     ro->mark = best;
@@ -141,7 +141,7 @@ int AI::min(int deep,Node*ro,int alpha,int beta){
         step = node->step;
         if(step==nullptr)return best;
         emit put_try(step);
-        val = min(deep-1,node,alpha,beta);
+        val = max(deep-1,node,best<alpha?best:alpha,beta);
         emit untry();
 
         if(val<best){
@@ -149,7 +149,7 @@ int AI::min(int deep,Node*ro,int alpha,int beta){
             beta = best;
             bestChild = node;
         }
-        if(val<alpha)
+        if(val<beta)
             break;
     }
     ro->bestChild = bestChild;
@@ -175,6 +175,7 @@ void AI::MakeDecision(){
 
 //pure communication slots
 void AI::Enter(int cur, QVector<QVector<int> >*board){
+
     myTurn=cur;
     this->board = board;
     root = new Node(nullptr,0,nullptr);

@@ -19,7 +19,7 @@ class Game : public QWidget
 {
     Q_OBJECT
 public:
-    QPoint boardSize=QPoint(10,10);
+    QPoint boardSize=QPoint(14,14);
     QPoint cellSize=QPoint(50,50);
     QPoint boardMargin=QPoint(30,30);
     QVector<Step*> stepList;
@@ -36,7 +36,7 @@ public:
 
     void Move(int x,int y, int id);
 
-    void Judge(Step* step);
+    int Judge(Step* step);
 
 signals:
 public slots:
@@ -74,10 +74,11 @@ class Step{
 public:
     Step(int x,int y,int id);
     Step(QPoint _pos,int id);
-    int getX();
-    int getY();
-    int getId();
+    int getX()const;
+    int getY()const;
+    int getId()const;
     void setId(int);
+    //inline bool operator ==(const Step &st) const;
 private:
     int x;
     int y;
