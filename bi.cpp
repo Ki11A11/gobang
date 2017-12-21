@@ -2,7 +2,6 @@
 #include <QString>
 #include <QDebug>
 
-
 BI::BI()
 {
 
@@ -149,10 +148,10 @@ int BI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
 
 
     }
-    qDebug()<<"myTurn:"<<myTurn;
-    qDebug()<<"point:"<<"("<<step->getX()<<","<<step->getY()<<")";
-    qDebug()<<"id:"<<step->getId();
-    qDebug()<<"score:"<<score;
+//    qDebug()<<"myTurn:"<<myTurn;
+//    qDebug()<<"point:"<<"("<<step->getX()<<","<<step->getY()<<")";
+//    qDebug()<<"id:"<<step->getId();
+//    qDebug()<<"score:"<<score;
     return score;
 }
 
@@ -160,7 +159,7 @@ int BI::Getline(Step *step,Direction direct,int distance)
 {
     int x=step->getX();
     int y=step->getY();
-    switch ((Direction)direct) {
+    switch (direct) {
     case Direction::Left:
         x=x-distance;
         break;
@@ -223,7 +222,7 @@ int BI::Getline(Step *step,Direction direct,int distance)
 
 void BI::Enter(int myTurn,QVector<QVector<int> > *board)
 {
-    return;
+
     int i=0;
     this->myTurn = myTurn;
     QVector<QVector<int> >::iterator it = board->begin();
@@ -237,13 +236,10 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
         {
             chessSite[j][i]=column.takeFirst();
             j++;
-
         }
         it++;
         i++;
     }
-    printSite();
-
 
     QVector<Step*> ThisTurnSteps;
     ThisTurnSteps = FindSteps(myTurn);
@@ -256,8 +252,6 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
         Step* s = ThisTurnSteps.at(i);
         chessSite[s->getX()][s->getY()] = myTurn;
         score = Alpha_Beta(deep-1,*s,1000000,-1000000);
-
-
         if(score == best)
         {
             End.push_back(ThisTurnSteps[i]);
@@ -275,8 +269,10 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
 
     count = End.size();
     int end = rand()%count;
+    Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn+10);
+    qDebug()<<consideredStep->getX()<<consideredStep->getY();
 
-    qDebug()<<End[end]->getX()<<","<<End[end]->getY();
+    got_idea(consideredStep);
 
 }
 
@@ -302,17 +298,15 @@ QVector<Step*> BI::FindSteps(int plyer)
     {
         for(int j=0;j<15;j++)
         {
+            if(chessSite[i][j]!=0){
+                continue;
+            }
             Step* step = new Step(i,j,plyer);
             if(Getline(step,Direction::ALL,2)==2)
             {
                 ConsidedStep.prepend(step);
             }
         }
-    }
-    while (!ConsidedStep.isEmpty()) {
-        Step* a=ConsidedStep.takeFirst();
-        got_idea(a);
-        qDebug()<<"("<<a->getX()<<","<<a->getY()<<","<<a->getId()<<")";
     }
 
     if(ConsidedStep.isEmpty())
@@ -327,7 +321,6 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
 {
     if(deep <=0)
     {
-        step.setId(myTurn);
         return Evaluate(&step);
     }
     if(deep%2 == 0)
@@ -340,7 +333,7 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
         for(int i=0;i<count;i++)
         {
             Step* s = ThisTurnSteps.at(i);
-            chessSite[s->getX()][s->getY()] = myTurn;
+            chessSite[s->getX()][s->getY()] = s->getId();
             score = Alpha_Beta(deep-1,*s,alpha,best>beta?best:beta);
             chessSite[s->getX()][s->getY()] = 0;
 
@@ -357,14 +350,14 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
     else if(deep%2 == 1)
     {
         QVector<Step*> ThisTurnSteps;
-        ThisTurnSteps = FindSteps(myTurn);
+        ThisTurnSteps = FindSteps(-myTurn);
         int count = ThisTurnSteps.size();
         int best = 1000000;
         int score = 0;
         for(int i=0;i<count;i++)
         {
             Step* s = ThisTurnSteps.at(i);
-            chessSite[s->getX()][s->getY()] = -myTurn;
+            chessSite[s->getX()][s->getY()] = s->getId();
             score = Alpha_Beta(deep-1,*s,best<alpha?best:alpha,beta);
             chessSite[s->getX()][s->getY()] = 0;
 

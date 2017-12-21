@@ -16,7 +16,7 @@ using namespace Qt;
 Game::Game(QWidget *parent) : QWidget(parent)
 {
     setMouseTracking(true);
-    setGeometry(50,50,750,750);
+    setGeometry(50,50,1000,1000);
     label_recorder = new QLabel(this);
     label_recorder->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     label_recorder->setText("WHITE:BLACK");
@@ -125,7 +125,6 @@ void Game::Draw(){
     repaint();
 }
 void Game::Move(Step* step){
-
 
     if(NEW_METRICS(step,matrix)){
         if(markUnMove==0)
