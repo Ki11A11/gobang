@@ -142,16 +142,7 @@ int BI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
         }
 
         score+=numOfPlayer*15;
-
-
-
-
-
     }
-//    qDebug()<<"myTurn:"<<myTurn;
-//    qDebug()<<"point:"<<"("<<step->getX()<<","<<step->getY()<<")";
-//    qDebug()<<"id:"<<step->getId();
-//    qDebug()<<"score:"<<score;
     return score;
 }
 
@@ -242,7 +233,7 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
     }
 
     QVector<Step*> ThisTurnSteps;
-    ThisTurnSteps = FindSteps(myTurn);
+    FindSteps(myTurn,&ThisTurnSteps);
     int count = ThisTurnSteps.size();
     int best = -1000000;
     int score = 0;
@@ -251,7 +242,7 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
     {
         Step* s = ThisTurnSteps.at(i);
         chessSite[s->getX()][s->getY()] = myTurn;
-        score = Alpha_Beta(deep-1,*s,1000000,-1000000);
+        score = Alpha_Beta(deep-1,1000000,-1000000);
         if(score == best)
         {
             End.push_back(ThisTurnSteps[i]);
@@ -291,9 +282,53 @@ void BI::printSite()
     qDebug()<<'\n';
 }
 
-QVector<Step*> BI::FindSteps(int plyer)
+template<typename T>
+void _swap(T *a,T *b){
+    T tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+
+void BI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itStep,int begin, int end){
+    if(end<=begin)return;
+    int pivot = *(itScore+begin);
+    int i=begin-1,j=end;
+    int overwhelming = true;
+    while(j>i && i<end && j>begin){
+        while(i++<end && j>i&& *(itScore+i)>=pivot);
+        while(j-->begin && j>i&&*(itScore+j)<pivot);
+        if(i<end && j>begin){
+            if(j>i)
+            // exchange i and j;
+            {
+                _swap<int>(itScore+j,itScore+i);
+                _swap<Step*>(itStep+j,itStep+i);
+            }
+            else if(i>=j)
+            //i>j: i reached j causing i satisfy cond lt pivot, this way i-1 satisfy gt pivot
+            //i==j: j reached i causing i satisfy cond lt pivot either, this way i-1 satisfy gt pivot
+            // if i and j never met, mark overwhelming state as true, suggesting i reached the end
+            {
+                 overwhelming = false;
+            }
+
+        }
+    }
+    _swap<int>(itScore+i-1,itScore+begin);
+    _swap<Step*>(itStep+i-1,itStep+begin);
+    if(overwhelming){
+        quickSort(itScore,itStep,begin,i-1);
+    }
+    else{
+        quickSort(itScore,itStep,begin,i);
+        quickSort(itScore,itStep,i,end);
+    }
+}
+
+void BI::FindSteps(int player, QVector<Step*>* ConsideredStep)
 {
-    QVector<Step*> ConsidedStep;
+    QVector<int> scores;
     for(int i=0;i<15;i++)
     {
         for(int j=0;j<15;j++)
@@ -301,32 +336,67 @@ QVector<Step*> BI::FindSteps(int plyer)
             if(chessSite[i][j]!=0){
                 continue;
             }
-            Step* step = new Step(i,j,plyer);
+            Step* step = new Step(i,j,player);
             if(Getline(step,Direction::ALL,2)==2)
             {
-                ConsidedStep.prepend(step);
+
+                Step* otherStep = new Step(i,j,-player);
+                ConsideredStep->prepend(step);
+                scores.prepend(Evaluate(step)+Evaluate(otherStep));
+
             }
         }
     }
 
-    if(ConsidedStep.isEmpty())
+    if(ConsideredStep->isEmpty())
     {
-        Step* _step = new Step(7,7,plyer);
-        ConsidedStep.prepend(_step);
+        Step* _step = new Step(7,7,player);
+        ConsideredStep->prepend(_step);
     }
-    return ConsidedStep;
+    else {
+
+        QVector<int>::iterator itScore = scores.begin();
+        QVector<Step*>::iterator itStep  = ConsideredStep->begin();
+        qDebug()<<"ordinal scores";
+        for(int i=0;i<ConsideredStep->length();i++){
+            qDebug()<<scores[i];
+        }
+        quickSort(itScore,itStep,0,ConsideredStep->length());
+        qDebug()<<"sorted scores";
+        for(int i=0;i<ConsideredStep->length();i++){
+            qDebug()<<scores[i];
+        }
+        qDebug()<<"---------------------------------------------------";
+        if(ConsideredStep->length()>10){
+            ConsideredStep->resize(10);
+            ConsideredStep->squeeze();
+        }
+
+    }
+
 }
 
-int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
+int BI::Alpha_Beta(int deep,int alpha, int beta)
 {
     if(deep <=0)
     {
-        return Evaluate(&step);
+        int sumScore = 0;
+        for(int i=0;i<15;i++){
+            for(int j=0;j<15;j++){
+                if(chessSite[i][j]!=0){
+                    int symbol = chessSite[i][j]==myTurn?1:-1;
+                    Step* s = new Step(i,j,chessSite[i][j]);
+                    sumScore += symbol*Evaluate(s);
+                }
+
+            }
+        }
+        return sumScore;
     }
     if(deep%2 == 0)
     {
         QVector<Step*> ThisTurnSteps;
-        ThisTurnSteps = FindSteps(myTurn);
+        FindSteps(myTurn,&ThisTurnSteps);
         int count = ThisTurnSteps.size();
         int best = -1000000;
         int score = 0;
@@ -334,7 +404,7 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
         {
             Step* s = ThisTurnSteps.at(i);
             chessSite[s->getX()][s->getY()] = s->getId();
-            score = Alpha_Beta(deep-1,*s,alpha,best>beta?best:beta);
+            score = Alpha_Beta(deep-1,alpha,best>beta?best:beta);
             chessSite[s->getX()][s->getY()] = 0;
 
             if(score > best)
@@ -350,7 +420,7 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
     else if(deep%2 == 1)
     {
         QVector<Step*> ThisTurnSteps;
-        ThisTurnSteps = FindSteps(-myTurn);
+        FindSteps(-myTurn,&ThisTurnSteps);
         int count = ThisTurnSteps.size();
         int best = 1000000;
         int score = 0;
@@ -358,7 +428,7 @@ int BI::Alpha_Beta(int deep,Step step, int alpha, int beta)
         {
             Step* s = ThisTurnSteps.at(i);
             chessSite[s->getX()][s->getY()] = s->getId();
-            score = Alpha_Beta(deep-1,*s,best<alpha?best:alpha,beta);
+            score = Alpha_Beta(deep-1,best<alpha?best:alpha,beta);
             chessSite[s->getX()][s->getY()] = 0;
 
             if(score < best)

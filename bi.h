@@ -23,12 +23,13 @@ public slots:
 private:
     int chessSite[15][15];
     int myTurn;
-    int deep = 4;
+    int deep = 6;
 
     int Evaluate(Step*);
+    void quickSort(QVector<int>::iterator,QVector<Step*>::iterator,int,int);
     int Getline(Step*,Direction,int);
-    int Alpha_Beta(int deep,Step s,int alpha,int beta);
-    QVector<Step*> FindSteps(int plyer);
+    int Alpha_Beta(int deep,int alpha,int beta);
+    void FindSteps(int player,QVector<Step*>* ConsideredStep);
 };
 
 
