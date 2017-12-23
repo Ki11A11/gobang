@@ -1,5 +1,5 @@
-#ifndef BI_H
-#define BI_H
+#ifndef AI_H
+#define AI_H
 #include <QVector>
 #include <QPoint>
 #include "game.h"
@@ -8,11 +8,11 @@
 
 enum Direction{Left,Lefttop,Top,Righttop,Right,Rightbottom,Bottom,Leftbottom,ALL};
 
-class BI:public QObject
+class AI:public QObject
 {
     Q_OBJECT
 public:
-    BI();
+    AI();
     void printSite();
 signals:
     void got_idea(Step* step);
@@ -24,6 +24,7 @@ private:
     int chessSite[15][15];
     int myTurn;
     int deep = 6;
+    int DebugMode = 0;
 
     int Evaluate(Step*);
     void quickSort(QVector<int>::iterator,QVector<Step*>::iterator,int,int);
@@ -34,4 +35,4 @@ private:
 
 
 
-#endif // BI_H
+#endif // AI_H

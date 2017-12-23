@@ -9,9 +9,7 @@ SOURCES += \
     main.cpp \
     game.cpp \
     ai.cpp \
-    bi.cpp
 
 HEADERS += \
     game.h \
     ai.h \
-    bi.h

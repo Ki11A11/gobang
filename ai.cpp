@@ -1,13 +1,13 @@
-#include "bi.h"
+#include "ai.h"
 #include <QString>
 #include <QDebug>
 
-BI::BI()
+AI::AI()
 {
 
 }
 
-int BI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
+int AI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
 {
     int score = 0;
     int Id = step->getId();
@@ -146,7 +146,7 @@ int BI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
     return score;
 }
 
-int BI::Getline(Step *step,Direction direct,int distance)
+int AI::Getline(Step *step,Direction direct,int distance)
 {
     int x=step->getX();
     int y=step->getY();
@@ -211,7 +211,7 @@ int BI::Getline(Step *step,Direction direct,int distance)
     return chessSite[x][y];
 }
 
-void BI::Enter(int myTurn,QVector<QVector<int> > *board)
+void AI::Enter(int myTurn,QVector<QVector<int> > *board)
 {
 
     int i=0;
@@ -232,42 +232,61 @@ void BI::Enter(int myTurn,QVector<QVector<int> > *board)
         i++;
     }
 
-    QVector<Step*> ThisTurnSteps;
-    FindSteps(myTurn,&ThisTurnSteps);
-    int count = ThisTurnSteps.size();
-    int best = -1000000;
-    int score = 0;
-    QVector<Step*> End;
-    for(int i=0;i<count;i++)
-    {
-        Step* s = ThisTurnSteps.at(i);
-        chessSite[s->getX()][s->getY()] = myTurn;
-        score = Alpha_Beta(deep-1,1000000,-1000000);
-        if(score == best)
-        {
-            End.push_back(ThisTurnSteps[i]);
-        }
 
-        if(score > best)
-        {
-            best = score;
-            End.clear();
-            End.push_back(ThisTurnSteps[i]);
+    if(DebugMode){
+        int sumScore = 0;
+        for(int i=0;i<15;i++){
+            for(int j=0;j<15;j++){
+                if(chessSite[i][j]!=0){
+                    int symbol = chessSite[i][j]==myTurn?1:-1;
+                    Step* s = new Step(i,j,chessSite[i][j]);
+                    sumScore += symbol*Evaluate(s);
+                }
+            }
         }
-
-        chessSite[s->getX()][s->getY()] = 0;
+        qDebug()<<"sumScore:"<<sumScore;
     }
 
-    count = End.size();
-    int end = rand()%count;
-    Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn+10);
-    qDebug()<<consideredStep->getX()<<consideredStep->getY();
+    QVector<Step*> ThisTurnSteps;
+    FindSteps(myTurn,&ThisTurnSteps);
+    if(DebugMode){
 
-    got_idea(consideredStep);
+    }else{
+        int count = ThisTurnSteps.size();
+        int best = -1000000;
+        int score = 0;
+        QVector<Step*> End;
+        for(int i=0;i<count;i++)
+        {
+            Step* s = ThisTurnSteps.at(i);
+            chessSite[s->getX()][s->getY()] = myTurn;
+            score = Alpha_Beta(deep-1,1000000,-1000000);
+            if(score == best)
+            {
+                End.push_back(ThisTurnSteps[i]);
+            }
+
+            if(score > best)
+            {
+                best = score;
+                End.clear();
+                End.push_back(ThisTurnSteps[i]);
+            }
+
+            chessSite[s->getX()][s->getY()] = 0;
+        }
+
+        count = End.size();
+        int end = rand()%count;
+        Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn+10);
+        qDebug()<<consideredStep->getX()<<consideredStep->getY();
+
+        got_idea(consideredStep);
+    }
 
 }
 
-void BI::printSite()
+void AI::printSite()
 {
     for(int i=0;i<15;i++)
     {
@@ -290,7 +309,7 @@ void _swap(T *a,T *b){
 }
 
 
-void BI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itStep,int begin, int end){
+void AI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itStep,int begin, int end){
     if(end<=begin)return;
     int pivot = *(itScore+begin);
     int i=begin-1,j=end;
@@ -326,7 +345,7 @@ void BI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itSte
     }
 }
 
-void BI::FindSteps(int player, QVector<Step*>* ConsideredStep)
+void AI::FindSteps(int player, QVector<Step*>* ConsideredStep)
 {
     QVector<int> scores;
     for(int i=0;i<15;i++)
@@ -339,7 +358,6 @@ void BI::FindSteps(int player, QVector<Step*>* ConsideredStep)
             Step* step = new Step(i,j,player);
             if(Getline(step,Direction::ALL,2)==2)
             {
-
                 Step* otherStep = new Step(i,j,-player);
                 ConsideredStep->prepend(step);
                 scores.prepend(Evaluate(step)+Evaluate(otherStep));
@@ -357,26 +375,33 @@ void BI::FindSteps(int player, QVector<Step*>* ConsideredStep)
 
         QVector<int>::iterator itScore = scores.begin();
         QVector<Step*>::iterator itStep  = ConsideredStep->begin();
-        qDebug()<<"ordinal scores";
-        for(int i=0;i<ConsideredStep->length();i++){
-            qDebug()<<scores[i];
+        if(DebugMode){
+            qDebug()<<"ordinal scores";
+            for(int i=0;i<ConsideredStep->length();i++){
+                qDebug()<<scores[i];
+            }
         }
         quickSort(itScore,itStep,0,ConsideredStep->length());
-        qDebug()<<"sorted scores";
-        for(int i=0;i<ConsideredStep->length();i++){
-            qDebug()<<scores[i];
+        if(DebugMode){
+            qDebug()<<"sorted scores";
+            for(int i=0;i<ConsideredStep->length();i++){
+                qDebug()<<scores[i];
+            }
+            qDebug()<<"---------------------------------------------------";
         }
-        qDebug()<<"---------------------------------------------------";
         if(ConsideredStep->length()>10){
             ConsideredStep->resize(10);
             ConsideredStep->squeeze();
+        }
+        if(DebugMode){
+            qDebug()<<ConsideredStep->at(0)->getY()<<","<<ConsideredStep->at(0)->getX()<<"is the best"<<": "<<scores[0];
         }
 
     }
 
 }
 
-int BI::Alpha_Beta(int deep,int alpha, int beta)
+int AI::Alpha_Beta(int deep,int alpha, int beta)
 {
     if(deep <=0)
     {
