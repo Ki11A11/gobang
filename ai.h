@@ -1,42 +1,37 @@
-#ifndef AI_H
-#define AI_H
+#ifndef BI_H
+#define BI_H
 #include <QVector>
 #include <QPoint>
 #include "game.h"
-class Node;
+#include <QObject>
 
-class AI:public QObject{
+
+enum Direction{Left,Lefttop,Top,Righttop,Right,Rightbottom,Bottom,Leftbottom,ALL};
+
+class BI:public QObject
+{
     Q_OBJECT
 public:
-    explicit AI();
-    static int getMark(QVector<QVector<int>> const & board,int boardWidth,int boardHeight);
-
+    BI();
+    void printSite();
 signals:
     void got_idea(Step* step);
-	void put_try(Step* step);
-    void untry();
 public slots:
     void Enter(int myTurn,QVector<QVector<int> > *board);
+
+
 private:
-    int Deep=2;
-    Node* root;
+    int chessSite[15][15];
     int myTurn;
-    int myMark;
-    QVector<QVector<int> >* board;
-    void MakeDecision();
-    void maxmin_alphabeta();//alpha represent max,beat represent min
-    int max(int deep,Node* root,int alpha,int beta);//alpha set to -MAXN,vice the versa beta
-    int min(int deep,Node* root,int alpha,int beta);
-    void gen_step(Node* ro);
+    int deep = 6;
+
+    int Evaluate(Step*);
+    void quickSort(QVector<int>::iterator,QVector<Step*>::iterator,int,int);
+    int Getline(Step*,Direction,int);
+    int Alpha_Beta(int deep,int alpha,int beta);
+    void FindSteps(int player,QVector<Step*>* ConsideredStep);
 };
 
-class Node{
-public:
-    Node(Step* step,int mark,Node* node):step(step),mark(mark),bestChild(node){}
-    QVector<Node*> children;
-    Step* step;
-    Node* bestChild;
-    int mark;
-};
 
-#endif // AI_H
+
+#endif // BI_H
