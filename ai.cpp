@@ -1,13 +1,28 @@
 #include "ai.h"
 #include <QString>
 #include <QDebug>
-
 AI::AI()
 {
-
+    Calculator* calculator = new Calculator;
+    calculator->enabled=true;
+    calculator->moveToThread(&calculateThread);
+    connect(&calculateThread,&QThread::finished,calculator,&QObject::deleteLater);
+    connect(this,SIGNAL(request_Calculator(int,QVector<QVector<int> >*)),calculator,SLOT(Calculate(int,QVector<QVector<int> >*)));
+    connect(this,SIGNAL(switch_DebugMode(int)),calculator,SLOT(switchDebugMode(int)));
+    connect(calculator,SIGNAL(return_AI(Step*)),this,SIGNAL(request_Board(Step*)));
+    connect(this,SIGNAL(stop_Calculate()),calculator,SLOT(StopCalculate()));
+    calculateThread.start();
+}
+AI::~AI(){
+    calculateThread.quit();
+    calculateThread.wait();
 }
 
-int AI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
+void Calculator::StopCalculate(){
+    enabled = false;
+}
+
+int Calculator::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
 {
     int score = 0;
     int Id = step->getId();
@@ -146,7 +161,7 @@ int AI::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
     return score;
 }
 
-int AI::Getline(Step *step,Direction direct,int distance)
+int Calculator::Getline(Step *step,Direction direct,int distance)
 {
     int x=step->getX();
     int y=step->getY();
@@ -211,7 +226,7 @@ int AI::Getline(Step *step,Direction direct,int distance)
     return chessSite[x][y];
 }
 
-void AI::Enter(int myTurn,QVector<QVector<int> > *board)
+void Calculator::Calculate(int myTurn,QVector<QVector<int> > *board)
 {
 
     int i=0;
@@ -232,26 +247,12 @@ void AI::Enter(int myTurn,QVector<QVector<int> > *board)
         i++;
     }
 
-
-    if(DebugMode){
-        int sumScore = 0;
-        for(int i=0;i<15;i++){
-            for(int j=0;j<15;j++){
-                if(chessSite[i][j]!=0){
-                    int symbol = chessSite[i][j]==myTurn?1:-1;
-                    Step* s = new Step(i,j,chessSite[i][j]);
-                    sumScore += symbol*Evaluate(s);
-                }
-            }
-        }
-        qDebug()<<"sumScore:"<<sumScore;
-    }
-
     QVector<Step*> ThisTurnSteps;
     FindSteps(myTurn,&ThisTurnSteps);
-    if(DebugMode){
-
-    }else{
+    switch(DebugMode){
+    case 1:
+        break;
+    case 0:
         int count = ThisTurnSteps.size();
         int best = -1000000;
         int score = 0;
@@ -271,22 +272,24 @@ void AI::Enter(int myTurn,QVector<QVector<int> > *board)
                 best = score;
                 End.clear();
                 End.push_back(ThisTurnSteps[i]);
+
             }
 
             chessSite[s->getX()][s->getY()] = 0;
         }
-
+        if(!enabled) {
+            enabled = true;
+            break;
+        }
         count = End.size();
         int end = rand()%count;
-        Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn+10);
-        qDebug()<<consideredStep->getX()<<consideredStep->getY();
-
-        got_idea(consideredStep);
+        Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn);
+        emit return_AI(consideredStep);
+        break;
     }
-
 }
 
-void AI::printSite()
+void Calculator::printSite()
 {
     for(int i=0;i<15;i++)
     {
@@ -309,7 +312,7 @@ void _swap(T *a,T *b){
 }
 
 
-void AI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itStep,int begin, int end){
+void Calculator::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itStep,int begin, int end){
     if(end<=begin)return;
     int pivot = *(itScore+begin);
     int i=begin-1,j=end;
@@ -319,17 +322,17 @@ void AI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itSte
         while(j-->begin && j>i&&*(itScore+j)<pivot);
         if(i<end && j>begin){
             if(j>i)
-            // exchange i and j;
+                // exchange i and j;
             {
                 _swap<int>(itScore+j,itScore+i);
                 _swap<Step*>(itStep+j,itStep+i);
             }
             else if(i>=j)
-            //i>j: i reached j causing i satisfy cond lt pivot, this way i-1 satisfy gt pivot
-            //i==j: j reached i causing i satisfy cond lt pivot either, this way i-1 satisfy gt pivot
-            // if i and j never met, mark overwhelming state as true, suggesting i reached the end
+                //i>j: i reached j causing i satisfy cond lt pivot, this way i-1 satisfy gt pivot
+                //i==j: j reached i causing i satisfy cond lt pivot either, this way i-1 satisfy gt pivot
+                // if i and j never met, mark overwhelming state as true, suggesting i reached the end
             {
-                 overwhelming = false;
+                overwhelming = false;
             }
 
         }
@@ -345,8 +348,10 @@ void AI::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterator itSte
     }
 }
 
-void AI::FindSteps(int player, QVector<Step*>* ConsideredStep)
+void Calculator::FindSteps(int player, QVector<Step*>* ConsideredStep)
 {
+    if(!enabled)return;
+
     QVector<int> scores;
     for(int i=0;i<15;i++)
     {
@@ -375,14 +380,14 @@ void AI::FindSteps(int player, QVector<Step*>* ConsideredStep)
 
         QVector<int>::iterator itScore = scores.begin();
         QVector<Step*>::iterator itStep  = ConsideredStep->begin();
-        if(DebugMode){
+        if(DebugMode==1){
             qDebug()<<"ordinal scores";
             for(int i=0;i<ConsideredStep->length();i++){
                 qDebug()<<scores[i];
             }
         }
         quickSort(itScore,itStep,0,ConsideredStep->length());
-        if(DebugMode){
+        if(DebugMode==1){
             qDebug()<<"sorted scores";
             for(int i=0;i<ConsideredStep->length();i++){
                 qDebug()<<scores[i];
@@ -393,7 +398,7 @@ void AI::FindSteps(int player, QVector<Step*>* ConsideredStep)
             ConsideredStep->resize(10);
             ConsideredStep->squeeze();
         }
-        if(DebugMode){
+        if(DebugMode==1){
             qDebug()<<ConsideredStep->at(0)->getY()<<","<<ConsideredStep->at(0)->getX()<<"is the best"<<": "<<scores[0];
         }
 
@@ -401,8 +406,11 @@ void AI::FindSteps(int player, QVector<Step*>* ConsideredStep)
 
 }
 
-int AI::Alpha_Beta(int deep,int alpha, int beta)
+int Calculator::Alpha_Beta(int deep,int alpha, int beta)
 {
+    if(!enabled) {
+        return 0;
+    }
     if(deep <=0)
     {
         int sumScore = 0;
@@ -471,5 +479,9 @@ int AI::Alpha_Beta(int deep,int alpha, int beta)
         qDebug()<<"error";
         exit(0);
     }
+}
+
+void Calculator::switchDebugMode(int mode){
+    DebugMode = mode;
 }
 

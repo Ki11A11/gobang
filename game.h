@@ -8,66 +8,80 @@
 #include <QPoint>
 #include <QVector>
 #include <QLabel>
-
+#include <QComboBox>
+#include <QMessageBox>
 #define WHITE 1
 #define BLACK -1
 #define EMPTY 0
-#define MARK_NEW(id) (id+10)
 
 class Step;
 class Game : public QWidget
 {
     Q_OBJECT
 public:
-    QPoint boardSize=QPoint(14,14);
-    QPoint cellSize=QPoint(50,50);
-    QPoint boardMargin=QPoint(30,30);
-    QVector<Step*> stepList;
-    qint32 curPlayer=WHITE; //WHITE go first
-    QVector<QVector<int> > matrix;
+
+
     explicit Game(QWidget *parent = 0);
-    void setBoardSize(int width,int height);
-    void setBoardSize(int size);
-    void setBoardSize(QPoint size);
-    void setCellSize(int width,int height);
-    void setCellSize(int size);
-    void setCellSize(QPoint size);
-
-
-    void Move(int x,int y, int id);
-
-    int Judge(Step* step);
-
 signals:
+    void switch_DebugMode(int mode);
 public slots:
+    void AIDrop(Step* step);
 protected:
     void paintEvent(QPaintEvent *event);
     void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
 private:
-    QPoint canvasPos=QPoint(100,100);
-    qint32 window_width=600;
-    qint32 window_height=600;
-    qint32 canvas_width=cellSize.x()*boardSize.x()+2*boardMargin.x();
-    qint32 canvas_height=cellSize.y()*boardSize.y()+2*boardMargin.y();
-    QPixmap* canvas;
-    QPushButton* btn_move;
-    QPushButton* btn_remove;
-    QPushButton* btn_unmove;
-    QPushButton* btn_ai_enter;
-    QLabel* label_recorder;
+    int cellSize=50;
+    int boardMargin=30;
 
-    int markUnMove = 0;
-signals:
-    void notify_ai(int cur, QVector<QVector<int> >*board);
-private slots:
-    void NotifyAI();
+    int windowWidth=900;
+    int windowHeight=1000;
+    int canvasWidth=cellSize*14+2*boardMargin;
+    int canvasHeight=cellSize*14+2*boardMargin;
+    int canvasX = (windowWidth-canvasWidth)/2;
+    int canvasY = 200;
+    int btnGroupLeftX = canvasX;
+    int btnGroupY = canvasY + -125;
+    int btnGroupY2 = canvasY -75;
+
+    bool EnableAI = false;
+    int Winner = EMPTY;
+    int CurPlayer=WHITE;
+    int AITurn = EMPTY;
+
+    QPixmap* canvas;
+    QPushButton *btn_move,
+                *btn_re_move,
+                *btn_unmove,
+                *btn_invite_AI,
+                *btn_banish_AI,
+                *btn_re_start;
+    QLabel *lb_cb_switch_DebugMode,
+           *lb_manifest_AI_INFO;
+    QComboBox *cb_switch_DebugMode;
+
+    QVector<Step*> unmovedSteps,
+                   steps;
+    QVector<QVector<int> > board;
+
+
+    void initView();
+    void initData();
+    void getStepFromMouse(int mouseX, int mouseY);
+    int Judge(Step* step);
     void Draw();
-    void Move(Step* step);
     void UnMove();
     void ReMove();
-    void Try(Step* step);
-    void UnTry();
+    void Move(Step* step);
+signals:
+    void request_AI(int cur, QVector<QVector<int> >*board);
+    void banish_AI();
+private slots:
+    void BTN_re_move_clicked();
+    void BTN_unmove_clicked();
+    void BTN_invite_AI_clicked();
+    void BTN_banish_AI_clicked();
+    void BTN_re_start_clicked();
+    void CB_switch_DebugMode_changed(int index);
 };
 
 class Step{
@@ -77,8 +91,6 @@ public:
     int getX()const;
     int getY()const;
     int getId()const;
-    void setId(int);
-    //inline bool operator ==(const Step &st) const;
 private:
     int x;
     int y;

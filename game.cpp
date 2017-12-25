@@ -2,175 +2,205 @@
 #include <QPainter>
 #include <QPen>
 #include <QDebug>
-#include <QDesktopWidget>
 #include <QApplication>
 #include <QMouseEvent>
 #include <QLabel>
-using namespace Qt;
-#define MARK_UNMOVE(step,mark__unmove,matrix) (step->setId(step->getId()-10)),(mark__unmove++),matrix[step->getX()][step->getY()]=EMPTY
-#define MARK_REMOVE(step,mark__unmove,matrix) (step->setId(step->getId()+10)),(mark__unmove--),matrix[step->getX()][step->getY()]=step->getId()
-#define REMOVE_METRICS(id) id==WHITE||id==BLACK
-#define GOBANG_SIZE (boardSize+QPoint(1,1))
-#define NEW_METRICS(step,matrix) (step->getId()-10>=(BLACK>WHITE?WHITE:BLACK)?(step->setId(step->getId()-10),matrix[step->getX()][step->getY()]=step->getId(),true):false)
+
 
 Game::Game(QWidget *parent) : QWidget(parent)
 {
     setMouseTracking(true);
-    setGeometry(50,50,1000,1000);
-    label_recorder = new QLabel(this);
-    label_recorder->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-    label_recorder->setText("WHITE:BLACK");
-    label_recorder->setAlignment(Qt::AlignCenter | Qt::AlignCenter);
-    label_recorder->setGeometry(120,0,200,100);
-    canvas = new QPixmap(canvas_width,canvas_height);
-    matrix.resize(GOBANG_SIZE.x());
-    for(int i=0;i<matrix.length();i++){
-        matrix[i].resize(GOBANG_SIZE.y());
-        matrix[i].fill(EMPTY,matrix[i].length());
-    }
-    btn_remove = new QPushButton(this);
-    btn_remove->setText("ReMove");
+    setGeometry(50,50,windowWidth,windowHeight);
+    initData();
+    initView();
+}
+
+void Game::initView(){
+    canvas = new QPixmap(canvasWidth,canvasHeight);
+
+    cb_switch_DebugMode = new QComboBox(this);
+    cb_switch_DebugMode->setGeometry(canvasWidth+canvasX-200,btnGroupY2,200,50);
+    cb_switch_DebugMode->addItem("Evaluate Steps",QVariant(1));
+    cb_switch_DebugMode->addItem("Evaluate Board",QVariant(2));
+    cb_switch_DebugMode->addItem("Disable Debug",QVariant(0));
+    cb_switch_DebugMode->setCurrentIndex(-1);
+
+    lb_cb_switch_DebugMode = new QLabel(this);
+    lb_cb_switch_DebugMode->setText("Debug Mode");
+    lb_cb_switch_DebugMode->setAlignment(Qt::AlignCenter | Qt::AlignCenter);
+    lb_cb_switch_DebugMode->setGeometry(canvasWidth+canvasX-150,btnGroupY,100,50);
+
+    lb_manifest_AI_INFO = new QLabel(this);
+    lb_manifest_AI_INFO->setText("AI Joined");
+    lb_manifest_AI_INFO->setAlignment(Qt::AlignCenter | Qt::AlignCenter);
+    lb_manifest_AI_INFO->setGeometry(btnGroupLeftX,btnGroupY-50,200,50);
+    lb_manifest_AI_INFO->hide();
+
+    btn_re_start = new QPushButton(this);
+    btn_re_start->setText("ReStart");
+    btn_re_start->setGeometry(windowWidth/2-100,btnGroupY,150,50);
+    btn_re_move = new QPushButton(this);
+    btn_re_move->setText("Move Again");
+    btn_re_move->setGeometry(btnGroupLeftX,btnGroupY,150,50);
     btn_unmove = new QPushButton(this);
     btn_unmove->setText("UnMove");
-    btn_ai_enter = new QPushButton(this);
-    btn_ai_enter->setText("AI Enter");
-    btn_remove->setGeometry(0,0,100,50);
-    btn_unmove->setGeometry(0,50,100,50);
-    btn_ai_enter->setGeometry(100,0,100,50);
-    connect(btn_remove,SIGNAL(clicked()),this,SLOT(ReMove()));
-    connect(btn_unmove,SIGNAL(clicked()),this,SLOT(UnMove()));
-    connect(btn_ai_enter,SIGNAL(clicked()),this,SLOT(NotifyAI()));
+    btn_unmove->setGeometry(btnGroupLeftX,btnGroupY2,150,50);
+    btn_invite_AI = new QPushButton(this);
+    btn_invite_AI->setText("Invite AI");
+    btn_invite_AI->setGeometry(btnGroupLeftX+150,btnGroupY,150,50);
+    btn_banish_AI = new QPushButton(this);
+    btn_banish_AI->setText("Banish AI");
+    btn_banish_AI->setGeometry(btnGroupLeftX+150,btnGroupY2,150,50);
+
+    connect(btn_re_move,SIGNAL(clicked()),this,SLOT(BTN_re_move_clicked()));
+    connect(btn_unmove,SIGNAL(clicked()),this,SLOT(BTN_unmove_clicked()));
+    connect(btn_invite_AI,SIGNAL(clicked()),this,SLOT(BTN_invite_AI_clicked()));
+    connect(btn_banish_AI,SIGNAL(clicked()),this,SLOT(BTN_banish_AI_clicked()));
+    connect(btn_re_start,SIGNAL(clicked()),this,SLOT(BTN_re_start_clicked()));
+    connect(cb_switch_DebugMode,SIGNAL(currentIndexChanged(int)),this,SLOT(CB_switch_DebugMode_changed(int)));
     Draw();
 }
 
+void Game::initData(){
+    board.resize(15);
+    for(int i=0;i<board.length();i++){
+        board[i].resize(15);
+        board[i].fill(EMPTY,board[i].length());
+    }
+}
 
+void Game::AIDrop(Step *step){
+    Move(step);
+    lb_manifest_AI_INFO->setText("AI Droped.");
+}
 //heritance
 void Game::paintEvent(QPaintEvent *event){
     Q_UNUSED(event);
-    QPainter painter(this);
-    painter.drawPixmap(canvasPos.x(),canvasPos.y(),canvas_width,canvas_height,*canvas);
+    QPainter p(this);
+    p.drawPixmap(canvasX,canvasY,canvasWidth,canvasHeight,*canvas);
 }
 void Game::mousePressEvent(QMouseEvent *event){
-    QPoint globalCursorPos = QCursor::pos();
-    int mouseScreen = qApp->desktop()->screenNumber(globalCursorPos);
-    QRect mouseScreenGeometry = qApp->desktop()->screen(mouseScreen)->geometry();
-    QPoint localCursorPos = globalCursorPos - mouseScreenGeometry.topLeft();
-    QPoint mousePos = event->pos()-canvasPos-boardMargin;
-    mousePos.setX(qRound((float)mousePos.x()/cellSize.x()));
-    mousePos.setY(qRound((float)mousePos.y()/cellSize.y()));
-    if(0 <= mousePos.x() && mousePos.x() <= boardSize.x()
-            && 0<= mousePos.y() && mousePos.y() <= boardSize.y())
-    {
+    int eventX = event->pos().x();
+    int eventY = event->pos().y();
+    getStepFromMouse(eventX,eventY);
+}
 
-        if(matrix[mousePos.x()][mousePos.y()]!=EMPTY)
-            return;
-        Step* step= new Step(mousePos,MARK_NEW(curPlayer));
+
+
+//core
+void Game::getStepFromMouse(int mouseX, int mouseY){
+    int x = qRound((float)(mouseX-canvasX-boardMargin)/cellSize);
+    int y = qRound((float)(mouseY-canvasY-boardMargin)/cellSize);
+    if(0 <= x && x < 15
+            && 0<= y && y < 15)
+    {
+        int turn = CurPlayer==AITurn?EMPTY:CurPlayer;
+        Step* step= new Step(x,y,turn);
         Move(step);
     }
 }
-void Game::mouseReleaseEvent(QMouseEvent *event){
-    Q_UNUSED(event);
-}
-
-
-// setters
-void Game::setBoardSize(int width, int height){
-    boardSize.setX(width);
-    boardSize.setY(height);
-}
-void Game::setBoardSize(int size){
-    setBoardSize(size,size);
-}
-void Game::setBoardSize(QPoint size){
-    boardSize = size;
-}
-void Game::setCellSize(int width, int height){
-    cellSize.setX(width);
-    cellSize.setY(height);
-}
-void Game::setCellSize(int size){
-    setCellSize(size,size);
-}
-void Game::setCellSize(QPoint size){
-    cellSize = size;
-}
-
-//core
 void Game::Draw(){
-    QPainter painter(canvas);
-    painter.eraseRect(canvas->rect());
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(Qt::gray);
-    painter.drawRect(canvas->rect());
+    QPainter p(canvas);
+    p.eraseRect(canvas->rect());
+    p.setPen(Qt::NoPen);
+    p.setBrush(Qt::gray);
+    p.drawRect(canvas->rect());
     QPen pen(Qt::black);
     pen.setWidth(2);
-    painter.setPen(pen);
-    for(int i=0;i<boardSize.y()+1;i++){
-        painter.drawLine(boardMargin.x(),boardMargin.y()+i*cellSize.y(),boardMargin.x()+boardSize.x()*cellSize.x(),boardMargin.y()+i*cellSize.y());
+    p.setPen(pen);
+    for(int i=0;i<15;i++){
+        p.drawLine(boardMargin,boardMargin+i*cellSize,boardMargin+14*cellSize,boardMargin+i*cellSize);
+        p.drawLine(boardMargin+i*cellSize,boardMargin,boardMargin+i*cellSize,boardMargin+14*cellSize);
     }
-    for(int j=0;j<boardSize.x()+1;j++){
-        painter.drawLine(boardMargin.x()+j*cellSize.x(),boardMargin.y(),boardMargin.x()+j*cellSize.x(),boardMargin.y()+boardSize.y()*cellSize.y());
-    }
-    painter.setPen(Qt::NoPen);
-    for(QVector<Step*>::const_iterator it = stepList.begin();it!=stepList.end();it++){
+    p.setPen(Qt::NoPen);
+    for(QVector<Step*>::const_iterator it = steps.begin();it!=steps.end();it++){
         Step* s = *it;
         int color = s->getId();
         if(color == BLACK){
-            painter.setBrush(Qt::black);
+            p.setBrush(Qt::black);
         }else if(color ==WHITE){
-            painter.setBrush(Qt::white);
+            p.setBrush(Qt::white);
         }else {continue;}
-        painter.drawEllipse(QPoint(s->getX()*cellSize.x()+boardMargin.x(),s->getY()*cellSize.y()+boardMargin.y()),cellSize.x()/2,cellSize.x()/2);
+        p.drawEllipse(QPoint(s->getX()*cellSize+boardMargin,s->getY()*cellSize+boardMargin),cellSize/2,cellSize/2);
     }
     repaint();
 }
-void Game::Move(Step* step){
 
-    if(NEW_METRICS(step,matrix)){
-        if(markUnMove==0)
-        {
-            stepList.append(step);
-        }
-        else {
-            if(stepList.length()-markUnMove-1<0)markUnMove--; //bug when unmoveMark set to edge and do new remove-unmove, but mem set to origin, so after remove the new unmove, the original unmove been ready to accept remove
-
-            stepList[stepList.length()-markUnMove] = step;
-            markUnMove--;
-        }
-    }
-
-    curPlayer = curPlayer==BLACK?WHITE:BLACK;
-    Judge(step);
+void Game::BTN_re_move_clicked(){
+    ReMove();
+}
+void Game::BTN_unmove_clicked(){
+    UnMove();
+}
+void Game::BTN_invite_AI_clicked(){
+    if(EnableAI)return;
+    EnableAI = true;
+    AITurn = CurPlayer;
+    lb_manifest_AI_INFO->show();
+    emit request_AI(CurPlayer,&board);
+}
+void Game::BTN_banish_AI_clicked(){
+    if(!EnableAI)return;
+    EnableAI = false;
+    AITurn = EMPTY;
+    lb_manifest_AI_INFO->hide();
+    emit banish_AI();
+}
+void Game::BTN_re_start_clicked(){
+    Winner = EMPTY;
+    BTN_banish_AI_clicked();
+    steps.clear();
+    steps.squeeze();
+    unmovedSteps.clear();
+    unmovedSteps.squeeze();
+    board.clear();
+    board.squeeze();
+    initData();
     Draw();
 }
-void Game::Move(int x,int y, int id){
-    Step* step = new Step(x,y,id);
-    Move(step);
+void Game::CB_switch_DebugMode_changed(int index){
+    int mode = cb_switch_DebugMode->itemData(index).toInt();
+    emit switch_DebugMode(mode);
+}
+
+void Game::Move(Step* step){
+    int x = step->getX();
+    int y = step->getY();
+    int id = step->getId();
+
+    if(id!=CurPlayer || board[x][y]!=EMPTY || Winner!=EMPTY){
+        return;
+    }
+    if(!unmovedSteps.isEmpty()){
+        unmovedSteps.clear();
+        unmovedSteps.squeeze();
+    }
+    steps.append(step);
+    board[x][y] = id;
+    CurPlayer = id==WHITE?BLACK:WHITE;
+    Draw();
+    Judge(step);
+    if(EnableAI && CurPlayer==AITurn){
+        emit request_AI(CurPlayer,&board);
+        lb_manifest_AI_INFO->setText("AI is pondering.");
+    }
 }
 void Game::UnMove(){
-    Step* step;
-    int nextRemove;
-    qDebug()<<markUnMove;
-    if(stepList.length()==0)return;
-
-    nextRemove = stepList.length()-markUnMove-1;
-    if(nextRemove<0)return;
-
-    step = stepList[nextRemove];
-    MARK_UNMOVE(step,markUnMove,matrix);
-    qDebug()<<step->getId()<<step->getX();
-    Move(step);
+      Step* s = steps.takeLast();
+      board[s->getX()][s->getY()] = EMPTY;
+      unmovedSteps.append(s);
+      Draw();
 }
 void Game::ReMove(){
-    Step* step;
-    if(markUnMove==0)return;
-
-    step=stepList[stepList.length()-markUnMove];
-    MARK_REMOVE(step,markUnMove,matrix);
-    Move(step);
+    if(!unmovedSteps.isEmpty()){
+        Step* s = unmovedSteps.takeLast();
+        board[s->getX()][s->getY()] = s->getId();
+        steps.append(s);
+        Draw();
+    }
 }
 int Game::Judge(Step* step){
-    int co = step->getId();
+    int id = step->getId();
     int x = step->getX();
     int y = step->getY();
     int c,r,m,v;
@@ -179,9 +209,9 @@ int Game::Judge(Step* step){
     row=col=mai=vice=0;
     for(int i=-4;i<5;i++){
         c = x+i;
-        if(0<=c&&c<GOBANG_SIZE.x()){
+        if(0<=c&&c<15){
             if(row==5)continue;
-            if(matrix[c][y]==co){
+            if(board[c][y]==id){
                 row++;
             }else{
 
@@ -191,9 +221,9 @@ int Game::Judge(Step* step){
     }
     for(int i=-4;i<5;i++){
         r = y+i;
-        if(0<=r&&r<GOBANG_SIZE.y()){
+        if(0<=r&&r<15){
             if(col==5)break;
-            if(matrix[x][r]==co){
+            if(board[x][r]==id){
                 col++;
             }else{
                 col=0;
@@ -202,9 +232,9 @@ int Game::Judge(Step* step){
     }
     for(int i=-4;i<5;i++){
         m = i;
-        if(0<=(x+m)&&(x+m)<GOBANG_SIZE.y()&&0<=(y+m)&&(y+m)<GOBANG_SIZE.y() ){
+        if(0<=(x+m)&&(x+m)<15&&0<=(y+m)&&(y+m)<15){
             if(mai==5)break;
-            if(matrix[x+m][y+m]==co){
+            if(board[x+m][y+m]==id){
                 mai++;
             }else{
                 mai=0;
@@ -214,9 +244,9 @@ int Game::Judge(Step* step){
 
     for(int i=-4;i<5;i++){
         v = i;
-        if(0<=(x+v)&&(x+v)<GOBANG_SIZE.x()&&0<=(y-v)&&(y-v)<GOBANG_SIZE.x()){
+        if(0<=(x+v)&&(x+v)<15&&0<=(y-v)&&(y-v)<15){
             if(vice==5)break;
-            if(matrix[x+v][y-v]==co){
+            if(board[x+v][y-v]==id){
                 vice++;
             }else{
                 vice=0;
@@ -225,28 +255,27 @@ int Game::Judge(Step* step){
     }
 
     if(col==5||row==5||mai==5||vice==5){
-        QString winner = co==WHITE?"White":"Black";
-        label_recorder->setText(winner);
-        return curPlayer;
+        Winner = id;
+        QString s = Winner==WHITE?"White wins":"Black wins";
+        QMessageBox mb;
+        mb.setText(s);
+        mb.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        mb.setButtonText(QMessageBox::Yes,"Play again.");
+        mb.setButtonText(QMessageBox::No,"I see it.");
+        switch(mb.exec()){
+            case QMessageBox::Yes:
+                BTN_re_start_clicked();
+              break;
+        case QMessageBox::No:
+            break;
+        }
+        return CurPlayer;
     }
 
     return 0;
 
 }
-void Game::Try(Step* step){
-    stepList.push_back(step);
-    matrix[step->getX()][step->getY()]=step->getId();
-}
-void Game::UnTry(){
-    Step* step = stepList.back();
-    stepList.pop_back();
-    matrix[step->getX()][step->getY()]=EMPTY;
-}
 
-//pure communication slots
-void Game::NotifyAI(){
-    emit notify_ai(curPlayer,&matrix);
-}
 
 //Step
 Step::Step(int x,int y,int id):x(x),y(y),id(id){}
@@ -258,11 +287,3 @@ Step::Step(QPoint _pos,int _id){
 int Step::getX()const{return x;}
 int Step::getY()const{return y;}
 int Step::getId()const{return id;}
-void Step::setId(int id){this->id=id;}
-//inline bool Step::operator ==(const Step &st)const
-//{
-//    if(x == st.getX() && y == st.getY() && id == st.getId())
-//        return true;
-//    else
-//        return false;
-//}
