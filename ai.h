@@ -20,7 +20,6 @@ signals:
     void request_Board(Step* step);
     void request_Calculator(int myTurn,QVector<QVector<int> > *board);
     void switch_DebugMode(int mode);
-    void stop_Calculate();
 private:
     QThread calculateThread;
 
@@ -33,7 +32,6 @@ public:
     int DebugMode = 0;
     int myTurn;
     int chessSite[15][15];
-    int enabled = false;
     void printSite();
 signals:
     void return_AI(Step* step);
@@ -45,7 +43,6 @@ public slots:
     int Getline(Step*,Direction,int);
     int Alpha_Beta(int deep,int alpha,int beta);
     void FindSteps(int player,QVector<Step*>* ConsideredStep);
-    void StopCalculate();
 };
 
 #endif // AI_H

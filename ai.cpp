@@ -4,13 +4,11 @@
 AI::AI()
 {
     Calculator* calculator = new Calculator;
-    calculator->enabled=true;
     calculator->moveToThread(&calculateThread);
     connect(&calculateThread,&QThread::finished,calculator,&QObject::deleteLater);
     connect(this,SIGNAL(request_Calculator(int,QVector<QVector<int> >*)),calculator,SLOT(Calculate(int,QVector<QVector<int> >*)));
     connect(this,SIGNAL(switch_DebugMode(int)),calculator,SLOT(switchDebugMode(int)));
     connect(calculator,SIGNAL(return_AI(Step*)),this,SIGNAL(request_Board(Step*)));
-    connect(this,SIGNAL(stop_Calculate()),calculator,SLOT(StopCalculate()));
     calculateThread.start();
 }
 AI::~AI(){
@@ -18,9 +16,6 @@ AI::~AI(){
     calculateThread.wait();
 }
 
-void Calculator::StopCalculate(){
-    enabled = false;
-}
 
 int Calculator::Evaluate(Step *step)//x,y,所需检测的玩家棋子类型
 {
@@ -277,10 +272,6 @@ void Calculator::Calculate(int myTurn,QVector<QVector<int> > *board)
 
             chessSite[s->getX()][s->getY()] = 0;
         }
-        if(!enabled) {
-            enabled = true;
-            break;
-        }
         count = End.size();
         int end = rand()%count;
         Step* consideredStep = new Step(End[end]->getY(),End[end]->getX(),myTurn);
@@ -350,7 +341,6 @@ void Calculator::quickSort(QVector<int>::iterator itScore,QVector<Step*>::iterat
 
 void Calculator::FindSteps(int player, QVector<Step*>* ConsideredStep)
 {
-    if(!enabled)return;
 
     QVector<int> scores;
     for(int i=0;i<15;i++)
@@ -408,9 +398,8 @@ void Calculator::FindSteps(int player, QVector<Step*>* ConsideredStep)
 
 int Calculator::Alpha_Beta(int deep,int alpha, int beta)
 {
-    if(!enabled) {
-        return 0;
-    }
+
+
     if(deep <=0)
     {
         int sumScore = 0;

@@ -26,6 +26,7 @@ signals:
     void switch_DebugMode(int mode);
 public slots:
     void AIDrop(Step* step);
+    void OnBanishFinished();
 protected:
     void paintEvent(QPaintEvent *event);
     void mousePressEvent(QMouseEvent* event);
@@ -47,6 +48,7 @@ private:
     int Winner = EMPTY;
     int CurPlayer=WHITE;
     int AITurn = EMPTY;
+    bool IsBanished = false;
 
     QPixmap* canvas;
     QPushButton *btn_move,

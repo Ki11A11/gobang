@@ -70,6 +70,7 @@ void Game::initData(){
 }
 
 void Game::AIDrop(Step *step){
+    if(!EnableAI)return;
     Move(step);
     lb_manifest_AI_INFO->setText("AI Droped.");
 }
@@ -136,6 +137,7 @@ void Game::BTN_invite_AI_clicked(){
     if(EnableAI)return;
     EnableAI = true;
     AITurn = CurPlayer;
+    lb_manifest_AI_INFO->setText("AI joined.");
     lb_manifest_AI_INFO->show();
     emit request_AI(CurPlayer,&board);
 }
@@ -144,7 +146,6 @@ void Game::BTN_banish_AI_clicked(){
     EnableAI = false;
     AITurn = EMPTY;
     lb_manifest_AI_INFO->hide();
-    emit banish_AI();
 }
 void Game::BTN_re_start_clicked(){
     Winner = EMPTY;
@@ -275,7 +276,9 @@ int Game::Judge(Step* step){
     return 0;
 
 }
-
+void Game::OnBanishFinished(){
+    IsBanished = true;
+}
 
 //Step
 Step::Step(int x,int y,int id):x(x),y(y),id(id){}
