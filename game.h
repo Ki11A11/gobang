@@ -24,6 +24,7 @@ public:
     explicit Game(QWidget *parent = 0);
 signals:
     void switch_DebugMode(int mode);
+    void start_Game();
 public slots:
     void AIDrop(Step* step);
     void OnBanishFinished();

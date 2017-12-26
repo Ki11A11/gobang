@@ -13,6 +13,7 @@ Game::Game(QWidget *parent) : QWidget(parent)
     setGeometry(50,50,windowWidth,windowHeight);
     initData();
     initView();
+    emit start_Game();
 }
 
 void Game::initView(){
@@ -158,6 +159,7 @@ void Game::BTN_re_start_clicked(){
     board.squeeze();
     initData();
     Draw();
+    emit start_Game();
 }
 void Game::CB_switch_DebugMode_changed(int index){
     int mode = cb_switch_DebugMode->itemData(index).toInt();
